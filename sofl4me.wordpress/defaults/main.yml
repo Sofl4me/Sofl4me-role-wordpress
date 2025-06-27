@@ -1,0 +1,12 @@
+---
+mariadb_root_password: examplerootPW
+
+wordpress_db_name: wpdb
+wordpress_db_user: wpuser
+wordpress_db_password: pass
+
+wordpress_url: http://localhost
+wordpress_dir: /var/www/html/wordpress
+mysql_root_password: supersecret
+web_user: "{{ 'www-data' if ansible_os_family == 'Debian' else 'apache' }}"
+web_group: "{{ 'www-data' if ansible_os_family == 'Debian' else 'apache' }}"

@@ -1,0 +1,6 @@
+---
+
+- name: Déployer l'application Wordpress et sa base de donnée
+  hosts: all
+  roles:
+    - sofl4me.wordpress

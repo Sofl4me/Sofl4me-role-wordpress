@@ -1,0 +1,6 @@
+---
+apache_service: "{{ 'apache2' if ansible_os_family == 'Debian' else 'httpd' }}"
+apache_vhost_path: "{{ '/etc/apache2/sites-available/wordpress.conf' if ansible_os_family == 'Debian' else '/etc/httpd/conf.d/wordpress.conf' }}"
+web_user: "{{ 'www-data' if ansible_os_family == 'Debian' else 'apache' }}"
+mysql_root_password: supersecret
+web_group: "{{ 'www-data' if ansible_os_family == 'Debian' else 'apache' }}"

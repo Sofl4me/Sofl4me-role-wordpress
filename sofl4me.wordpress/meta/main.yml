@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: wordpress_role
+  author: Sofl4me
+  description: Rôle Ansible pour installer WordPress avec MariaDB et Apache
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: EL
+      versions:
+        - 8
+    - name: Debian
+      versions:
+        - buster
+        - bullseye
+  galaxy_tags:
+    - wordpress
+    - apache
+    - php
+    - mariadb
+dependencies: []
