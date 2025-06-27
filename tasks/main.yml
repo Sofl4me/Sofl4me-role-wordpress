@@ -1,6 +1,10 @@
 ---
 - name: Installer paquets sur Debian/Ubuntu
+<<<<<<< HEAD
   apt:
+=======
+  ansible.builtin.apt:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     name: "{{ item }}"
     state: present
     update_cache: yes
@@ -14,7 +18,11 @@
   when: ansible_os_family == 'Debian'
 
 - name: Installer paquets sur Rocky Linux
+<<<<<<< HEAD
   yum:
+=======
+  ansible.builtin.yum:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     name: "{{ item }}"
     state: present
   loop:
@@ -27,36 +35,60 @@
   when: ansible_os_family == 'RedHat'
 
 - name: Installer pip sur Rocky Linux
+<<<<<<< HEAD
   yum:
+=======
+  ansible.builtin.yum:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     name: python3-pip
     state: present
   when: ansible_os_family == 'RedHat'
 
 - name: Installer pip sur Debian
+<<<<<<< HEAD
   apt:
+=======
+  ansible.builtin.apt:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     name: python3-pip
     state: present
   when: ansible_os_family == 'Debian'
 
 - name: Installer PyMySQL sur Debian/Ubuntu
+<<<<<<< HEAD
   apt:
+=======
+  ansible.builtin.apt:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     name: python3-pymysql
     state: present
   when: ansible_os_family == 'Debian'
 
 - name: Installer le module Python pour MySQL sur RedHat
+<<<<<<< HEAD
   pip:
+=======
+  ansible.builtin.pip:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     name: PyMySQL
     state: present
   when: ansible_os_family == 'RedHat'
 
 - name: Supprimer la page index.html par défaut
+<<<<<<< HEAD
   file:
+=======
+  ansible.builtin.file:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     path: /var/www/html/index.html
     state: absent
 
 - name: Définir le service Apache
+<<<<<<< HEAD
   set_fact:
+=======
+  ansible.builtin.set_fact:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     apache_service: "{{ 'httpd' if ansible_os_family == 'RedHat' else 'apache2' }}"
 
 - name: Démarrer httpd en arrière-plan sur Rocky Linux (pour conteneur)
@@ -65,6 +97,7 @@
   args:
     executable: /bin/bash
   when: ansible_os_family == "RedHat"
+<<<<<<< HEAD
 
 - name: Démarrer et activer Apache sous Debian
   ansible.builtin.service:
@@ -81,24 +114,56 @@
 
 - name: Télécharger WordPress
   get_url:
+=======
+  # Vérifie si le processus httpd en foreground est déjà en cours.
+  # S'il ne l'est pas, il le démarre en arrière-plan.
+  # La partie 'pgrep' assure l'idempotence pour cette tâche de démarrage initial.
+
+- name: Démarrer Apache2 dans un conteneur Ubuntu
+  ansible.builtin.shell: |
+    service apache2 start
+  args:
+    executable: /bin/bash
+  when: ansible_os_family == "Debian"
+  # Ansible considérera cette tâche comme "changed" à chaque exécution si le service démarre.
+  # Cependant, "service apache2 start" est généralement idempotent en lui-même.
+
+- name: Télécharger WordPress
+  ansible.builtin.get_url:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     url: https://wordpress.org/latest.zip
     dest: /tmp/wordpress.zip
     mode: '0644'
     force: yes
 
 - name: Décompresser WordPress
+<<<<<<< HEAD
   unarchive:
+=======
+  ansible.builtin.unarchive:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     src: /tmp/wordpress.zip
     dest: /var/www/html/
     remote_src: yes
 
 - name: Changer les permissions du répertoire WordPress
+<<<<<<< HEAD
   file:
+=======
+  ansible.builtin.file:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     path: /var/www/html
     owner: "{{ web_user }}"
     group: "{{ web_user }}"
     recurse: yes
 
+<<<<<<< HEAD
+=======
+- name: Exécuter les handlers en attente (pour Apache)
+  ansible.builtin.meta: flush_handlers
+  # Utile pour s'assurer qu'Apache est redémarré si des configs ont été modifiées avant MariaDB.
+
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
 # === MariaDB ===
 - name: S'assurer que /var/lib/mysql appartient à mysql
   ansible.builtin.file:
@@ -106,6 +171,7 @@
     owner: mysql
     group: mysql
     recurse: true
+<<<<<<< HEAD
     state: directory 
   when: ansible_distribution in ["Ubuntu", "Rocky"]
 
@@ -127,11 +193,27 @@
 - name: Pause pour laisser MariaDB démarrer
   ansible.builtin.pause:
     seconds: 5
+=======
+    state: directory
+  when: ansible_distribution in ["Ubuntu", "Rocky"]
+
+- name: Démarrer MariaDB en arrière-plan (pour conteneur)
+  ansible.builtin.shell: |
+    pgrep -f "mysqld_safe" || mysqld_safe --user=mysql --datadir=/var/lib/mysql &
+  args:
+    executable: /bin/bash
+  async: 10 # Lance la commande en arrière-plan et ne l'attend pas.
+  poll: 0   # Ne vérifie pas le statut de la commande.
+  when: ansible_distribution in ["Ubuntu", "Rocky"]
+  # Utilise pgrep pour l'idempotence, démarre mysqld_safe si non déjà lancé.
+  # --user=mysql est ajouté pour s'assurer que le processus est exécuté avec l'utilisateur correct.
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
 
 - name: Attente du démarrage de MariaDB (port 3306)
   ansible.builtin.wait_for:
     port: 3306
     delay: 5
+<<<<<<< HEAD
     timeout: 30
     state: started
 
@@ -144,39 +226,92 @@
     login_unix_socket: /var/lib/mysql/mysql.sock 
     # L'utilisateur Ansible doit être root ou avoir sudo vers root pour que cela fonctionne.
   when: ansible_os_family == "RedHat"
+=======
+    timeout: 60
+    state: started
+  # Cette tâche reste cruciale pour s'assurer que MariaDB est disponible avant les opérations sur la BDD.
+
+- name: Définir mot de passe root MariaDB sur Rocky Linux (via shell et unix_socket)
+  ansible.builtin.shell: |
+    mysql -u root --socket=/var/lib/mysql/mysql.sock -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '{{ mariadb_root_password }}';"
+    mysql -u root -p'{{ mariadb_root_password }}' -h localhost -e "FLUSH PRIVILEGES;"
+  args:
+    executable: /bin/bash
+  when: ansible_os_family == "RedHat"
+  changed_when: true # Nous forçons le "changed" car la commande SQL est toujours exécutée.
+  no_log: true
+
+- name: Définir mot de passe root MariaDB sur Debian/Ubuntu (via unix_socket initial)
+  community.mysql.mysql_user:
+    name: root
+    host: localhost
+    plugin: mysql_native_password
+    password: "{{ mariadb_root_password }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock # Chemin standard du socket sur Debian/Ubuntu
+  when: ansible_os_family == "Debian"
+  no_log: true
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
 
 - name: Mettre à jour les privilèges root sur Rocky Linux après le changement de mot de passe
   community.mysql.mysql_query:
     query: "FLUSH PRIVILEGES;"
     login_user: root
     login_password: "{{ mariadb_root_password }}"
+<<<<<<< HEAD
   when: ansible_os_family == "RedHat"
 
 
 - name: Supprimer les utilisateurs anonymes
   mysql_user:
+=======
+  when: ansible_os_family == "RedHat" # Cette tâche est désormais redondante avec le shell précédent, mais laissée pour clarté. Peut être retirée après test.
+
+- name: Supprimer les utilisateurs anonymes
+  community.mysql.mysql_user:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     name: ''
     host_all: yes
     state: absent
     login_user: root
     login_password: "{{ mariadb_root_password }}"
+<<<<<<< HEAD
 
 - name: Supprimer la base de test
   mysql_db:
+=======
+  when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+
+- name: Supprimer la base de test
+  community.mysql.mysql_db:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     name: test
     state: absent
     login_user: root
     login_password: "{{ mariadb_root_password }}"
+<<<<<<< HEAD
 
 - name: Créer la base de données WordPress
   mysql_db:
+=======
+  when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+
+- name: Créer la base de données WordPress
+  community.mysql.mysql_db:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     name: "{{ wordpress_db_name }}"
     state: present
     login_user: root
     login_password: "{{ mariadb_root_password }}"
+<<<<<<< HEAD
 
 - name: Créer l’utilisateur WordPress
   mysql_user:
+=======
+  when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+
+- name: Créer l’utilisateur WordPress
+  community.mysql.mysql_user:
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
     name: "{{ wordpress_db_user }}"
     password: "{{ wordpress_db_password }}"
     priv: "{{ wordpress_db_name }}.*:ALL"
@@ -184,6 +319,10 @@
     state: present
     login_user: root
     login_password: "{{ mariadb_root_password }}"
+<<<<<<< HEAD
+=======
+  when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
 
 - name: Copier wp-config.php et configurer la base de données
   ansible.builtin.template:
@@ -192,4 +331,8 @@
     owner: "{{ web_user }}"
     group: "{{ web_group }}"
     mode: '0640'
+<<<<<<< HEAD
   notify: "{{ 'restart apache2' if ansible_os_family == 'Debian' else 'restart httpd_shell' }}"
+=======
+  notify: "{{ 'restart apache2' if ansible_os_family == 'Debian' else 'restart httpd' }}"
+>>>>>>> b19ef85 (Ajout du rôle Ansible Wordpress complet)
