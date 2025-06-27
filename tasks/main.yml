@@ -1,0 +1,195 @@
+---
+- name: Installer paquets sur Debian/Ubuntu
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  loop:
+    - apache2
+    - php
+    - php-mysql
+    - mariadb-server
+    - unzip
+    - wget
+  when: ansible_os_family == 'Debian'
+
+- name: Installer paquets sur Rocky Linux
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - httpd
+    - php
+    - php-mysqlnd
+    - mariadb-server
+    - unzip
+    - wget
+  when: ansible_os_family == 'RedHat'
+
+- name: Installer pip sur Rocky Linux
+  yum:
+    name: python3-pip
+    state: present
+  when: ansible_os_family == 'RedHat'
+
+- name: Installer pip sur Debian
+  apt:
+    name: python3-pip
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Installer PyMySQL sur Debian/Ubuntu
+  apt:
+    name: python3-pymysql
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Installer le module Python pour MySQL sur RedHat
+  pip:
+    name: PyMySQL
+    state: present
+  when: ansible_os_family == 'RedHat'
+
+- name: Supprimer la page index.html par défaut
+  file:
+    path: /var/www/html/index.html
+    state: absent
+
+- name: Définir le service Apache
+  set_fact:
+    apache_service: "{{ 'httpd' if ansible_os_family == 'RedHat' else 'apache2' }}"
+
+- name: Démarrer httpd en arrière-plan sur Rocky Linux (pour conteneur)
+  ansible.builtin.shell: |
+    pgrep -f "/usr/sbin/httpd -DFOREGROUND" || /usr/sbin/httpd -DFOREGROUND &
+  args:
+    executable: /bin/bash
+  when: ansible_os_family == "RedHat"
+
+- name: Démarrer et activer Apache sous Debian
+  ansible.builtin.service:
+    name: apache2
+    state: started
+    enabled: true
+  when: ansible_os_family == "Debian"
+
+- name: Installer Apache sous RedHat
+  ansible.builtin.yum:
+    name: httpd
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Télécharger WordPress
+  get_url:
+    url: https://wordpress.org/latest.zip
+    dest: /tmp/wordpress.zip
+    mode: '0644'
+    force: yes
+
+- name: Décompresser WordPress
+  unarchive:
+    src: /tmp/wordpress.zip
+    dest: /var/www/html/
+    remote_src: yes
+
+- name: Changer les permissions du répertoire WordPress
+  file:
+    path: /var/www/html
+    owner: "{{ web_user }}"
+    group: "{{ web_user }}"
+    recurse: yes
+
+# === MariaDB ===
+- name: S'assurer que /var/lib/mysql appartient à mysql
+  ansible.builtin.file:
+    path: /var/lib/mysql
+    owner: mysql
+    group: mysql
+    recurse: true
+    state: directory 
+  when: ansible_distribution in ["Ubuntu", "Rocky"]
+
+# --- Pour Rocky Linux (RedHat) : Gestion spécifique de MariaDB ---
+
+- name: Initialiser MariaDB si nécessaire
+  ansible.builtin.command: >
+    mysql_install_db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
+  args:
+    creates: /var/lib/mysql/mysql
+  when: ansible_distribution in ["Ubuntu", "Rocky"]
+
+- name: Démarrer MariaDB sans systemd (via mysqld_safe)
+  ansible.builtin.shell: "nohup mysqld_safe --user=mysql &"
+  async: 10
+  poll: 0
+  when: ansible_distribution in ["Ubuntu", "Rocky"]
+
+- name: Pause pour laisser MariaDB démarrer
+  ansible.builtin.pause:
+    seconds: 5
+
+- name: Attente du démarrage de MariaDB (port 3306)
+  ansible.builtin.wait_for:
+    port: 3306
+    delay: 5
+    timeout: 30
+    state: started
+
+- name: Définir mot de passe root MariaDB sur Rocky Linux (via unix_socket initial)
+  community.mysql.mysql_user:
+    name: root
+    host: localhost
+    plugin: mysql_native_password # Changer le plugin d'authentification
+    password: "{{ mariadb_root_password }}"
+    login_unix_socket: /var/lib/mysql/mysql.sock 
+    # L'utilisateur Ansible doit être root ou avoir sudo vers root pour que cela fonctionne.
+  when: ansible_os_family == "RedHat"
+
+- name: Mettre à jour les privilèges root sur Rocky Linux après le changement de mot de passe
+  community.mysql.mysql_query:
+    query: "FLUSH PRIVILEGES;"
+    login_user: root
+    login_password: "{{ mariadb_root_password }}"
+  when: ansible_os_family == "RedHat"
+
+
+- name: Supprimer les utilisateurs anonymes
+  mysql_user:
+    name: ''
+    host_all: yes
+    state: absent
+    login_user: root
+    login_password: "{{ mariadb_root_password }}"
+
+- name: Supprimer la base de test
+  mysql_db:
+    name: test
+    state: absent
+    login_user: root
+    login_password: "{{ mariadb_root_password }}"
+
+- name: Créer la base de données WordPress
+  mysql_db:
+    name: "{{ wordpress_db_name }}"
+    state: present
+    login_user: root
+    login_password: "{{ mariadb_root_password }}"
+
+- name: Créer l’utilisateur WordPress
+  mysql_user:
+    name: "{{ wordpress_db_user }}"
+    password: "{{ wordpress_db_password }}"
+    priv: "{{ wordpress_db_name }}.*:ALL"
+    host: localhost
+    state: present
+    login_user: root
+    login_password: "{{ mariadb_root_password }}"
+
+- name: Copier wp-config.php et configurer la base de données
+  ansible.builtin.template:
+    src: wp-config.php.j2
+    dest: /var/www/html/wordpress/wp-config.php
+    owner: "{{ web_user }}"
+    group: "{{ web_group }}"
+    mode: '0640'
+  notify: "{{ 'restart apache2' if ansible_os_family == 'Debian' else 'restart httpd_shell' }}"

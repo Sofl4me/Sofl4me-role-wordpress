@@ -1,0 +1,20 @@
+---
+- name: Déploiement WordPress sur Ubuntu
+  hosts: ubuntu
+  vars:
+    wordpress_db_name: wpdb
+    wordpress_db_user: wpuser
+    wordpress_db_password: pass
+    wordpress_db_host: localhost
+  roles:
+    - sofl4me.wordpress
+
+- name: Déploiement WordPress sur Rocky
+  hosts: rocky
+  vars:
+    wordpress_db_name: wpdb
+    wordpress_db_user: wpuser
+    wordpress_db_password: pass
+    wordpress_db_host: localhost
+  roles:
+    - sofl4me.wordpress

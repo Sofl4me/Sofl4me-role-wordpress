@@ -1,0 +1,17 @@
+# handlers/main.yml
+
+- name: restart apache2
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
+  listen: "restart apache2" # This handler listens for "restart apache2"
+  when: ansible_os_family == "Debian"
+
+- name: restart httpd_shell
+  ansible.builtin.shell: |
+    pkill -f "/usr/sbin/httpd" || true # Stop current httpd process (true to prevent failure if not running)
+    /usr/sbin/httpd -DFOREGROUND &    # Restart httpd in foreground for container
+  args:
+    executable: /bin/bash
+  listen: "restart httpd_shell" # This handler listens for "restart httpd_shell"
+  when: ansible_os_family == "RedHat"
